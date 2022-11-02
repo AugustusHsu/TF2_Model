@@ -188,30 +188,32 @@ class MBConvBlock(Layer):
         return x
 
 class ConvHead(Layer):
-    def __init__(self, filters, kernel_size, stride, groups, use_bias, image_size, dropout_rate, classes=1000, include_top=True):
+    def __init__(self, filters, kernel_size, stride, groups, use_bias, image_size):
         super().__init__()
-        self.include_top = include_top
         self._conv_head = Conv2dStaticSamePadding(filters, kernel_size, stride, groups, use_bias, image_size)
         self._bn1 = BatchNormalization()
         self._swish = tf.keras.activations.swish
-        
-        if self.include_top:
-            self._avg_pooling = GlobalAveragePooling2D()
-            self._dropout = Dropout(dropout_rate)
-            self._fc = Dense(
-                classes,
-                use_bias=True,
-                kernel_initializer=DENSE_KERNEL_INITIALIZER,
-                activation='softmax'
-            )
     
     def call(self, inputs):
         x = self._conv_head(inputs)
         x = self._bn1(x)
         x = self._swish(x)
-        if self.include_top:
-            x = self._avg_pooling(x)
-            x = self._dropout(x)
-            x = self._fc(x)
         return x
 
+class TopDense(Layer):
+    def __init__(self, classes, dropout_rate):
+        super().__init__()
+        self._avg_pooling = GlobalAveragePooling2D()
+        self._dropout = Dropout(dropout_rate)
+        self._fc = Dense(
+            classes,
+            use_bias=True,
+            kernel_initializer=DENSE_KERNEL_INITIALIZER,
+            activation='softmax'
+        )
+        
+    def call(self, inputs):
+        x = self._avg_pooling(inputs)
+        x = self._dropout(x)
+        x = self._fc(x)
+        return x

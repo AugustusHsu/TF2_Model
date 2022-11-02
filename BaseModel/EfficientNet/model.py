@@ -7,7 +7,8 @@ from .utils import (
 from .Components import (
     StemConv,
     MBConvBlock,
-    ConvHead
+    ConvHead,
+    TopDense
 )
 from .args import params_dict
 
@@ -112,7 +113,7 @@ def EfficientNet(model_name='efficientnet-b0', include_top=True, classes=1000):
                  (3, 3), (1, 1), 6, True, True]
     no_block, resolution, x = block(x, block_arg, no_block, num_blocks, dropout_rate, resolution)
     
-    # 
+    # ConvHead
     filters = round_filters(1280, width_coefficient=width_coef)
     resolution = calculate_output_image_size(resolution, (1,1))
     # filters, kernel_size, stride, groups, use_bias, image_size
@@ -122,9 +123,10 @@ def EfficientNet(model_name='efficientnet-b0', include_top=True, classes=1000):
         stride=(1,1), 
         groups=1, 
         use_bias=False, 
-        image_size=resolution, 
-        dropout_rate=dropout_rate, 
-        classes=classes, 
-        include_top=include_top
+        image_size=resolution,
     )(x)
+    
+    # Dense Layer
+    if include_top:
+        outputs = TopDense(classes, dropout_rate)(outputs)
     return  tf.keras.models.Model(inputs=inputs, outputs=outputs)
